@@ -54,27 +54,12 @@
         <th>Fabricante</th>
         <th>Fecha de Creación</th>
     </tr>
-    <tr>
-        <td>1</td>
-        <td><input type="text" value="Paracetamol"></td>
-        <td><input type="text" value="Medicamento para el dolor"></td>
-        <td><input type="text" value="Fabricante A"></td>
-        <td><input type="text" value="2024-06-01"></td>
-    </tr>
-    <tr>
-        <td>2</td>
-        <td><input type="text" value="Ibuprofeno"></td>
-        <td><input type="text" value="Antiinflamatorio"></td>
-        <td><input type="text" value="Fabricante B"></td>
-        <td><input type="text" value="2024-06-02"></td>
-    </tr>
-    <!-- Agrega más filas según sea necesario -->
 </table>
 
 <button class="btn-eliminar" onclick="eliminarFila()">Eliminar Última Fila</button>
 
 <script>
-    var contadorFilas = 2; // Empezamos en 2 porque ya hay dos filas
+    var contadorFilas = 0; // Empezamos en 0 porque aún no hay filas
     var db;
 
     var request = indexedDB.open('productosDB', 1);
@@ -94,21 +79,37 @@
 
     request.onsuccess = function(event) {
         db = event.target.result;
+        cargarDatos(); // Cargar datos existentes al abrir la base de datos
     };
 
-    function agregarFila() {
+    function cargarDatos() {
+        var transaction = db.transaction(['productos'], 'readonly');
+        var objectStore = transaction.objectStore('productos');
+
+        objectStore.openCursor().onsuccess = function(event) {
+            var cursor = event.target.result;
+            if (cursor) {
+                agregarFila(cursor.value);
+                cursor.continue();
+            }
+        };
+    }
+
+    function agregarFila(datos) {
         var tabla = document.getElementById('tablaDatos');
-        var ultimaFila = tabla.rows[tabla.rows.length - 1]; // Obtener la última fila
+        var nuevaFila = tabla.insertRow(); // Insertar una nueva fila al final de la tabla
+        var id = nuevaFila.insertCell();
+        var nombre = nuevaFila.insertCell();
+        var descripcion = nuevaFila.insertCell();
+        var fabricante = nuevaFila.insertCell();
+        var fecha_creacion = nuevaFila.insertCell();
 
-        var nuevaFila = ultimaFila.cloneNode(true); // Clonar la última fila
-        nuevaFila.querySelector('td:first-child').innerText = ++contadorFilas; // Incrementar ID
-        
-        // Limpiar valores de inputs en la nueva fila
-        nuevaFila.querySelectorAll('input').forEach(function(input) {
-            input.value = '';
-        });
-
-        tabla.appendChild(nuevaFila); // Agregar la nueva fila al final de la tabla
+        contadorFilas++;
+        id.innerText = contadorFilas;
+        nombre.innerHTML = '<input type="text" value="' + (datos ? datos.nombre : '') + '">';
+        descripcion.innerHTML = '<input type="text" value="' + (datos ? datos.descripcion : '') + '">';
+        fabricante.innerHTML = '<input type="text" value="' + (datos ? datos.fabricante : '') + '">';
+        fecha_creacion.innerHTML = '<input type="text" value="' + (datos ? datos.fecha_creacion : '') + '">';
 
         // Agregar evento para activar la edición de las celdas al hacer clic
         nuevaFila.addEventListener('click', function(event) {
@@ -129,7 +130,7 @@
 
     function eliminarFila() {
         var tabla = document.getElementById('tablaDatos');
-        if (tabla.rows.length > 2) { // Asegurarse de que haya al menos dos filas antes de eliminar la última
+        if (tabla.rows.length > 1) { // Asegurarse de que haya al menos una fila antes de eliminar
             tabla.deleteRow(-1); // Eliminar la última fila
             contadorFilas--; // Decrementar el contador de filas
         } else {
@@ -162,3 +163,4 @@
 
 </body>
 </html>
+
