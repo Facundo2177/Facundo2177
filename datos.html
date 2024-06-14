@@ -1,0 +1,164 @@
+
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <title>Productos</title>
+    <style>
+        table {
+            border-collapse: collapse;
+            width: 100%;
+            margin-bottom: 20px;
+        }
+        th, td {
+            border: 1px solid #dddddd;
+            text-align: left;
+            padding: 8px;
+        }
+        tr:nth-child(even) {
+            background-color: #f2f2f2;
+        }
+        th {
+            background-color: #4CAF50;
+            color: white;
+        }
+        td input {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .btn-eliminar {
+            background-color: #f44336;
+            color: white;
+            border: none;
+            cursor: pointer;
+            padding: 5px 10px;
+            border-radius: 5px;
+            margin-bottom: 10px; /* Agregamos margen inferior para separar el botón de las tablas */
+        }
+    </style>
+</head>
+<body>
+
+<h2>Productos</h2>
+
+<div id="contenedorTablas">
+    <button onclick="agregarFila()">Agregar Fila</button>
+    <button onclick="guardarDatos()">Guardar Datos</button>
+</div>
+
+<table id="tablaDatos">
+    <tr>
+        <th>ID</th>
+        <th>Nombre</th>
+        <th>Descripción</th>
+        <th>Fabricante</th>
+        <th>Fecha de Creación</th>
+    </tr>
+    <tr>
+        <td>1</td>
+        <td><input type="text" value="Paracetamol"></td>
+        <td><input type="text" value="Medicamento para el dolor"></td>
+        <td><input type="text" value="Fabricante A"></td>
+        <td><input type="text" value="2024-06-01"></td>
+    </tr>
+    <tr>
+        <td>2</td>
+        <td><input type="text" value="Ibuprofeno"></td>
+        <td><input type="text" value="Antiinflamatorio"></td>
+        <td><input type="text" value="Fabricante B"></td>
+        <td><input type="text" value="2024-06-02"></td>
+    </tr>
+    <!-- Agrega más filas según sea necesario -->
+</table>
+
+<button class="btn-eliminar" onclick="eliminarFila()">Eliminar Última Fila</button>
+
+<script>
+    var contadorFilas = 2; // Empezamos en 2 porque ya hay dos filas
+    var db;
+
+    var request = indexedDB.open('productosDB', 1);
+
+    request.onerror = function(event) {
+        console.error('Error al abrir la base de datos:', event.target.errorCode);
+    };
+
+    request.onupgradeneeded = function(event) {
+        db = event.target.result;
+        var objectStore = db.createObjectStore('productos', { keyPath: 'id', autoIncrement:true });
+        objectStore.createIndex('nombre', 'nombre', { unique: false });
+        objectStore.createIndex('descripcion', 'descripcion', { unique: false });
+        objectStore.createIndex('fabricante', 'fabricante', { unique: false });
+        objectStore.createIndex('fecha_creacion', 'fecha_creacion', { unique: false });
+    };
+
+    request.onsuccess = function(event) {
+        db = event.target.result;
+    };
+
+    function agregarFila() {
+        var tabla = document.getElementById('tablaDatos');
+        var ultimaFila = tabla.rows[tabla.rows.length - 1]; // Obtener la última fila
+
+        var nuevaFila = ultimaFila.cloneNode(true); // Clonar la última fila
+        nuevaFila.querySelector('td:first-child').innerText = ++contadorFilas; // Incrementar ID
+        
+        // Limpiar valores de inputs en la nueva fila
+        nuevaFila.querySelectorAll('input').forEach(function(input) {
+            input.value = '';
+        });
+
+        tabla.appendChild(nuevaFila); // Agregar la nueva fila al final de la tabla
+
+        // Agregar evento para activar la edición de las celdas al hacer clic
+        nuevaFila.addEventListener('click', function(event) {
+            var target = event.target;
+            if (target.tagName === 'TD' && !target.querySelector('input')) {
+                var input = document.createElement('input');
+                input.type = 'text';
+                input.value = target.innerText;
+                target.innerText = '';
+                target.appendChild(input);
+                input.focus();
+                input.addEventListener('blur', function() {
+                    target.innerText = input.value;
+                });
+            }
+        });
+    }
+
+    function eliminarFila() {
+        var tabla = document.getElementById('tablaDatos');
+        if (tabla.rows.length > 2) { // Asegurarse de que haya al menos dos filas antes de eliminar la última
+            tabla.deleteRow(-1); // Eliminar la última fila
+            contadorFilas--; // Decrementar el contador de filas
+        } else {
+            alert('No se pueden eliminar más filas.');
+        }
+    }
+
+    function guardarDatos() {
+        var tabla = document.getElementById('tablaDatos');
+        var transaction = db.transaction(['productos'], 'readwrite');
+        var objectStore = transaction.objectStore('productos');
+
+        // Limpiar los datos existentes en la base de datos antes de guardar
+        objectStore.clear();
+
+        for (var i = 1; i < tabla.rows.length; i++) {
+            var fila = tabla.rows[i];
+            var datos = {
+                nombre: fila.cells[1].querySelector('input').value,
+                descripcion: fila.cells[2].querySelector('input').value,
+                fabricante: fila.cells[3].querySelector('input').value,
+                fecha_creacion: fila.cells[4].querySelector('input').value
+            };
+            objectStore.add(datos);
+        }
+
+        alert('Datos guardados correctamente.');
+    }
+</script>
+
+</body>
+</html>
